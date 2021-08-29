@@ -1,0 +1,25 @@
+{
+  "name": "post-service",
+  "version": "1.0.0",
+  "description": "Post Service",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index",
+    "dev": "nodemon index",
+    "gen-keypair": "node generate-keypair.js"
+  },
+  "author": "Tim10",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.21.1",
+    "cors": "^2.8.5",
+    "cuid": "^2.1.8",
+    "date-fns": "^2.23.0",
+    "dotenv": "^10.0.0",
+    "express": "^4.17.1",
+    "file-extension": "^4.0.5",
+    "mongodb": "^3.6.9",
+    "multer": "^1.4.2",
+    "nodemon": "^2.0.7"
+  }
+}
