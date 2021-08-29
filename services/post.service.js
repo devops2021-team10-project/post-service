@@ -5,10 +5,11 @@ const findPostById = async ({ id } = {}) => {
   return await postDb.findById({id});
 };
 
-const registerRegularUser = async ({ postData, image } = {}) => {
+const insertPost = async ({ authorUserId, postData, imageInfo } = {}) => {
+  console.log(postData);
   const postCreateData = {
-    authorUserId:                 postData.authorUserId,
-    imagePath:                    postData.imagePath,
+    authorUserId:                 authorUserId,
+    imageInfo:                    imageInfo,
     hashtags:                     postData.hashtags,
     description:                  postData.description,
 
@@ -26,5 +27,5 @@ const registerRegularUser = async ({ postData, image } = {}) => {
 
 module.exports = Object.freeze({
   findPostById,
-  registerRegularUser
+  insertPost
 });
