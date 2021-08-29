@@ -1,5 +1,7 @@
 const express = require('express');
 const postRouter = express.Router();
+const fs = require('fs')
+
 
 const { handleError } = require('./../utils/error');
 
@@ -20,11 +22,37 @@ postRouter.get(
   authorize([Role.regular]),
   async (req, res, next) => {
     try {
-      return res.status(200).json({msg: "hello"});
+      const postId = req.params.postId;
+      if (!postId) {
+        throw {status: 400, msg: "Bad request, cannot get post"}
+      }
+      const post = await postService.findPostById({ id: postId });
+
+      return res.status(200).json(post);
     } catch(err) {
       handleError(err, res);
     }
 });
+
+postRouter.get(
+  '/:postId/image',
+  authenticate,
+  authorize([Role.regular]),
+  async (req, res, next) => {
+    try {
+      const postId = req.params.postId;
+      if (!postId) {
+        throw {status: 400, msg: "Bad request, cannot get post"}
+      }
+      const post = await postService.findPostById({ id: postId });
+
+      const file = post.imageInfo.path;
+      res.download(file);
+    } catch(err) {
+      handleError(err, res);
+    }
+  });
+
 
 postRouter.post(
   '',

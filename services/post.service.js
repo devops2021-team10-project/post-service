@@ -6,7 +6,6 @@ const findPostById = async ({ id } = {}) => {
 };
 
 const insertPost = async ({ authorUserId, postData, imageInfo } = {}) => {
-  console.log(postData);
   const postCreateData = {
     authorUserId:                 authorUserId,
     imageInfo:                    imageInfo,
