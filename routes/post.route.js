@@ -38,8 +38,6 @@ postRouter.get(
 
 postRouter.get(
   '/allByUser/:userId',
-  authenticate,
-  authorize([Role.regular]),
   async (req, res, next) => {
     try {
       const userId = req.params.userId;
