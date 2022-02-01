@@ -84,7 +84,7 @@ const declareQueues = (consumerChannel, producerChannel) => {
   Promise.all([brokerConsumer.getChannel(), brokerProducer.getChannel()]).then(values => {
     try {
       declareQueues(values[0], values[1]);
-      console.log("Post Service Ready");
+      console.log("Post Service - Ready");
     } catch (err) {
       console.log(err);
     }
