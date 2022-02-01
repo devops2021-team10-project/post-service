@@ -1,28 +1,50 @@
-const express = require('express');
-const http = require('http');
-const cors = require('cors');
 require('dotenv').config();
-const postRouter = require('./routes/post.route');
+
+const brokerConsumer = require('./msgBroker/consumer');
+const brokerProducer = require('./msgBroker/producer');
+const { formatResponse } = require('./msgBroker/utils');
+
+const postService = require('./services/post.service');
 
 
-// Init express 
-const app = express();
-
-// Setup express
-app.use(express.urlencoded({ extended: false }));
-app.use(express.json());
-app.use(cors());
+const POST_SERVICE_QUEUES = {
+  create:                     "postService_create",
+};
 
 
-// API routes
-app.use('/post-service-api/post', postRouter);
+const declareQueues = (consumerChannel, producerChannel) => {
 
-// Get environment vars
-const host = process.env.SERVER_HOST;
-const port = process.env.SERVER_PORT;
+  consumerChannel.assertQueue(POST_SERVICE_QUEUES.create, {exclusive: false}, (error2, q) => {
+    consumerChannel.consume(POST_SERVICE_QUEUES.create, async (msg) => {
+      const data = JSON.parse(msg.content);
+      let respData = null;
+      try {
+        const post = await postService.insertPost({
+          authorUserId: data.authorUserId,
+          postData: data.postData,
+          imageInfo: data.imageInfo
+        });
+        respData = formatResponse({data: post, err: null});
+      } catch (err) {
+        respData = formatResponse({data: null, err});
+      }
 
-// Start server
-const httpServer = http.createServer(app);
-httpServer.listen(port, host, function () {
-    console.log('Server listening on port ' + port);
-});
+      producerChannel.sendToQueue(msg.properties.replyTo,
+        Buffer.from(JSON.stringify(respData)), {
+          correlationId: msg.properties.correlationId
+        });
+      consumerChannel.ack(msg);
+    });
+  });
+}
+
+
+// Connect, make queues and start
+  Promise.all([brokerConsumer.getChannel(), brokerProducer.getChannel()]).then(values => {
+    try {
+      declareQueues(values[0], values[1]);
+      console.log("Post Service Ready");
+    } catch (err) {
+      console.log(err);
+    }
+  });
