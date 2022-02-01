@@ -8,11 +8,51 @@ const postService = require('./services/post.service');
 
 
 const POST_SERVICE_QUEUES = {
+  findPostById:               "postService_findPostById",
+  findPostsByUserId:          "postService_findPostsByUserId",
   create:                     "postService_create",
 };
 
 
 const declareQueues = (consumerChannel, producerChannel) => {
+
+  consumerChannel.assertQueue(POST_SERVICE_QUEUES.findPostById, {exclusive: false}, (error2, q) => {
+    consumerChannel.consume(POST_SERVICE_QUEUES.findPostById, async (msg) => {
+      const data = JSON.parse(msg.content);
+      let respData = null;
+      try {
+        const post = await postService.findPostById({ id: data.postId });
+        respData = formatResponse({data: post, err: null});
+      } catch (err) {
+        respData = formatResponse({data: null, err});
+      }
+
+      producerChannel.sendToQueue(msg.properties.replyTo,
+        Buffer.from(JSON.stringify(respData)), {
+          correlationId: msg.properties.correlationId
+        });
+      consumerChannel.ack(msg);
+    });
+  });
+
+  consumerChannel.assertQueue(POST_SERVICE_QUEUES.findPostsByUserId, {exclusive: false}, (error2, q) => {
+    consumerChannel.consume(POST_SERVICE_QUEUES.findPostsByUserId, async (msg) => {
+      const data = JSON.parse(msg.content);
+      let respData = null;
+      try {
+        const posts = await postService.findAllPostsByUserId({ authorUserId: data.userId });
+        respData = formatResponse({data: posts, err: null});
+      } catch (err) {
+        respData = formatResponse({data: null, err});
+      }
+
+      producerChannel.sendToQueue(msg.properties.replyTo,
+        Buffer.from(JSON.stringify(respData)), {
+          correlationId: msg.properties.correlationId
+        });
+      consumerChannel.ack(msg);
+    });
+  });
 
   consumerChannel.assertQueue(POST_SERVICE_QUEUES.create, {exclusive: false}, (error2, q) => {
     consumerChannel.consume(POST_SERVICE_QUEUES.create, async (msg) => {
@@ -36,6 +76,7 @@ const declareQueues = (consumerChannel, producerChannel) => {
       consumerChannel.ack(msg);
     });
   });
+
 }
 
 

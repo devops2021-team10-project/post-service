@@ -8,7 +8,7 @@ const timeout = ({ prom, time, clearFunc, exception }) => {
   let timer;
   return Promise.race([
     prom,
-    new Promise((_r, reject) => timer = setTimeout(() => { clearFunc(); reject(); }, time, exception))
+    new Promise((_r, reject) => timer = setTimeout(() => { clearFunc(); reject("Service call timed out."); }, time, exception))
   ]).finally(() => clearTimeout(timer));
 }
 
