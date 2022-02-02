@@ -41,6 +41,7 @@ const updatePost = async ({ id, postData } = {}) => {
 };
 
 const changeLikedPost = async ({ userId, toLikePostId, isLiked } = {}) => {
+  await changeDislikedPost({userId, toDislikePostId: toLikePostId, isDisliked: false});
   if (isLiked) {
     await postDb.addToPostSet({
       postId: toLikePostId,
@@ -58,6 +59,7 @@ const changeLikedPost = async ({ userId, toLikePostId, isLiked } = {}) => {
 
 const changeDislikedPost = async ({ userId, toDislikePostId, isDisliked } = {}) => {
   if (isDisliked) {
+    await changeLikedPost({userId, toLikePostId: toDislikePostId, isLiked: false });
     await postDb.addToPostSet({
       postId: toDislikePostId,
       toAddId: userId,

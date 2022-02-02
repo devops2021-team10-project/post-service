@@ -11,6 +11,9 @@ const POST_SERVICE_QUEUES = {
   findPostById:               "postService_findPostById",
   findPostsByUserId:          "postService_findPostsByUserId",
   create:                     "postService_create",
+
+  changeLikedPost:            "postService_changeLikedPost",
+  changeDislikedPost:         "postService_changeDislikedPost",
 };
 
 
@@ -65,6 +68,53 @@ const declareQueues = (consumerChannel, producerChannel) => {
           imageInfo: data.imageInfo
         });
         respData = formatResponse({data: post, err: null});
+      } catch (err) {
+        respData = formatResponse({data: null, err});
+      }
+
+      producerChannel.sendToQueue(msg.properties.replyTo,
+        Buffer.from(JSON.stringify(respData)), {
+          correlationId: msg.properties.correlationId
+        });
+      consumerChannel.ack(msg);
+    });
+  });
+
+  consumerChannel.assertQueue(POST_SERVICE_QUEUES.changeLikedPost, {exclusive: false}, (error2, q) => {
+    consumerChannel.consume(POST_SERVICE_QUEUES.changeLikedPost, async (msg) => {
+      const data = JSON.parse(msg.content);
+      let respData = null;
+      try {
+        await postService.changeLikedPost({
+          userId: data.userId,
+          toLikePostId: data.toLikePostId,
+          isLiked: data.isLiked
+        });
+        respData = formatResponse({data: {}, err: null});
+      } catch (err) {
+        respData = formatResponse({data: null, err});
+      }
+
+      producerChannel.sendToQueue(msg.properties.replyTo,
+        Buffer.from(JSON.stringify(respData)), {
+          correlationId: msg.properties.correlationId
+        });
+      consumerChannel.ack(msg);
+    });
+  });
+
+
+  consumerChannel.assertQueue(POST_SERVICE_QUEUES.changeDislikedPost, {exclusive: false}, (error2, q) => {
+    consumerChannel.consume(POST_SERVICE_QUEUES.changeDislikedPost, async (msg) => {
+      const data = JSON.parse(msg.content);
+      let respData = null;
+      try {
+        await postService.changeDislikedPost({
+          userId: data.userId,
+          toDislikePostId: data.toDislikePostId,
+          isDisliked: data.isDisliked
+        });
+        respData = formatResponse({data: {}, err: null});
       } catch (err) {
         respData = formatResponse({data: null, err});
       }
