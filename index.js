@@ -14,6 +14,8 @@ const POST_SERVICE_QUEUES = {
 
   changeLikedPost:            "postService_changeLikedPost",
   changeDislikedPost:         "postService_changeDislikedPost",
+
+  createComment:              "postService_createComment"
 };
 
 
@@ -115,6 +117,29 @@ const declareQueues = (consumerChannel, producerChannel) => {
           isDisliked: data.isDisliked
         });
         respData = formatResponse({data: {}, err: null});
+      } catch (err) {
+        respData = formatResponse({data: null, err});
+      }
+
+      producerChannel.sendToQueue(msg.properties.replyTo,
+        Buffer.from(JSON.stringify(respData)), {
+          correlationId: msg.properties.correlationId
+        });
+      consumerChannel.ack(msg);
+    });
+  });
+
+  consumerChannel.assertQueue(POST_SERVICE_QUEUES.createComment, {exclusive: false}, (error2, q) => {
+    consumerChannel.consume(POST_SERVICE_QUEUES.createComment, async (msg) => {
+      const data = JSON.parse(msg.content);
+      let respData = null;
+      try {
+        const newComment = await postService.createComment({
+          postId: data.postId,
+          authorId: data.authorId,
+          text: data.text
+        });
+        respData = formatResponse({data: newComment, err: null});
       } catch (err) {
         respData = formatResponse({data: null, err});
       }

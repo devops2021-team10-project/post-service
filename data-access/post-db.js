@@ -124,6 +124,36 @@ const deleteById = async ({ id }) => {
 };
 
 
+const createComment = async ({ postId, authorId, text }) => {
+  const { db } = await makeDb();
+
+  const commentToCreate = {
+    _id: Id.makeId(),
+    authorId: authorId,
+    text: text,
+    createdAt: Date.now(),
+    deletedAt: null,
+  };
+  const res = await db.collection('posts').updateOne(
+    {
+      _id: postId,
+      deletedAt: null
+    }, {
+      $push: {
+        comments: commentToCreate,
+      }
+    }
+  );
+  if(res.matchedCount !== 1) {
+    throw "Post not found for create comment ops";
+  }
+
+  const { _id, ...insertedComment } = commentToCreate;
+  return { id: _id, ...insertedComment };
+
+}
+
+
 module.exports = Object.freeze({
   findById,
   findAllByUserId,
@@ -131,6 +161,7 @@ module.exports = Object.freeze({
 
   insert,
   update,
+  createComment,
   addToPostSet,
   removeFromPostSet,
 
