@@ -16,7 +16,7 @@ const findAllByUserId = async ({ authorUserId }) => {
   const { db } = await makeDb();
   const result = await db.collection('posts')
     .find({ authorUserId, deletedAt: null })
-    .sort({ createdAt: 1});
+    .sort({ createdAt: -1});
   const found = await result.toArray();
   if (found.length === 0) {
     return null;
