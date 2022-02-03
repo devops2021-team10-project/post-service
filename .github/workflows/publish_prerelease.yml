@@ -1,0 +1,36 @@
+name: Publish prerelease image
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  publish-prerelease:
+    name: Publish prerelease image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+
+      - name: Bump version and push tag
+        id: tag_version
+        uses: mathieudutour/github-tag-action@v5.5
+        with:
+          append_to_pre_release_tag: 'dev'
+          default_bump: patch
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create a GitHub prerelease
+        uses: actions/create-release@v1
+        id: create_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.tag_version.outputs.new_tag }}
+          release_name: Prerelease ${{ steps.tag_version.outputs.new_tag }}
+          body: ${{ steps.tag_version.outputs.changelog }}
+          prerelease: true
+
+      - name: Build docker image
+        run: ./buildImage.sh ${{ steps.tag_version.outputs.new_tag }} ${{ secrets.DOCKERHUB_USERNAME }} ${{ secrets.DOCKERHUB_PASSWORD }}

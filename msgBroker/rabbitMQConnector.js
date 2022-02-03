@@ -1,8 +1,10 @@
 const amqp = require("amqplib/callback_api");
 
+const RABBITMQ_URL = process.env.RABBITMQ_URL;
+
 const channelInit = () => {
   return new Promise((resolve, reject) => {
-    amqp.connect('amqp://user:123456@localhost', (error0, connection) => {
+    amqp.connect(RABBITMQ_URL, (error0, connection) => {
       if (error0) {
         reject(error0);
       }
