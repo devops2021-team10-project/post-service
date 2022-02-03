@@ -1,28 +1,166 @@
-const express = require('express');
-const http = require('http');
-const cors = require('cors');
 require('dotenv').config();
-const postRouter = require('./routes/post.route');
+
+const brokerConsumer = require('./msgBroker/consumer');
+const brokerProducer = require('./msgBroker/producer');
+const { formatResponse } = require('./msgBroker/utils');
+
+const postService = require('./services/post.service');
 
 
-// Init express 
-const app = express();
+const POST_SERVICE_QUEUES = {
+  findPostById:               "postService_findPostById",
+  findPostsByUserId:          "postService_findPostsByUserId",
+  create:                     "postService_create",
 
-// Setup express
-app.use(express.urlencoded({ extended: false }));
-app.use(express.json());
-app.use(cors());
+  changeLikedPost:            "postService_changeLikedPost",
+  changeDislikedPost:         "postService_changeDislikedPost",
+
+  createComment:              "postService_createComment"
+};
 
 
-// API routes
-app.use('/post-service-api/post', postRouter);
+const declareQueues = (consumerChannel, producerChannel) => {
 
-// Get environment vars
-const host = process.env.SERVER_HOST;
-const port = process.env.SERVER_PORT;
+  consumerChannel.assertQueue(POST_SERVICE_QUEUES.findPostById, {exclusive: false}, (error2, q) => {
+    consumerChannel.consume(POST_SERVICE_QUEUES.findPostById, async (msg) => {
+      const data = JSON.parse(msg.content);
+      let respData = null;
+      try {
+        const post = await postService.findPostById({ id: data.postId });
+        respData = formatResponse({data: post, err: null});
+      } catch (err) {
+        respData = formatResponse({data: null, err});
+      }
 
-// Start server
-const httpServer = http.createServer(app);
-httpServer.listen(port, host, function () {
-    console.log('Server listening on port ' + port);
-});
+      producerChannel.sendToQueue(msg.properties.replyTo,
+        Buffer.from(JSON.stringify(respData)), {
+          correlationId: msg.properties.correlationId
+        });
+      consumerChannel.ack(msg);
+    });
+  });
+
+  consumerChannel.assertQueue(POST_SERVICE_QUEUES.findPostsByUserId, {exclusive: false}, (error2, q) => {
+    consumerChannel.consume(POST_SERVICE_QUEUES.findPostsByUserId, async (msg) => {
+      const data = JSON.parse(msg.content);
+      let respData = null;
+      try {
+        const posts = await postService.findAllPostsByUserId({ authorUserId: data.userId });
+        respData = formatResponse({data: posts, err: null});
+      } catch (err) {
+        respData = formatResponse({data: null, err});
+      }
+
+      producerChannel.sendToQueue(msg.properties.replyTo,
+        Buffer.from(JSON.stringify(respData)), {
+          correlationId: msg.properties.correlationId
+        });
+      consumerChannel.ack(msg);
+    });
+  });
+
+  consumerChannel.assertQueue(POST_SERVICE_QUEUES.create, {exclusive: false}, (error2, q) => {
+    consumerChannel.consume(POST_SERVICE_QUEUES.create, async (msg) => {
+      const data = JSON.parse(msg.content);
+      let respData = null;
+      try {
+        const post = await postService.insertPost({
+          authorUserId: data.authorUserId,
+          postData: data.postData,
+          imageInfo: data.imageInfo
+        });
+        respData = formatResponse({data: post, err: null});
+      } catch (err) {
+        respData = formatResponse({data: null, err});
+      }
+
+      producerChannel.sendToQueue(msg.properties.replyTo,
+        Buffer.from(JSON.stringify(respData)), {
+          correlationId: msg.properties.correlationId
+        });
+      consumerChannel.ack(msg);
+    });
+  });
+
+  consumerChannel.assertQueue(POST_SERVICE_QUEUES.changeLikedPost, {exclusive: false}, (error2, q) => {
+    consumerChannel.consume(POST_SERVICE_QUEUES.changeLikedPost, async (msg) => {
+      const data = JSON.parse(msg.content);
+      let respData = null;
+      try {
+        await postService.changeLikedPost({
+          userId: data.userId,
+          toLikePostId: data.toLikePostId,
+          isLiked: data.isLiked
+        });
+        respData = formatResponse({data: {}, err: null});
+      } catch (err) {
+        respData = formatResponse({data: null, err});
+      }
+
+      producerChannel.sendToQueue(msg.properties.replyTo,
+        Buffer.from(JSON.stringify(respData)), {
+          correlationId: msg.properties.correlationId
+        });
+      consumerChannel.ack(msg);
+    });
+  });
+
+
+  consumerChannel.assertQueue(POST_SERVICE_QUEUES.changeDislikedPost, {exclusive: false}, (error2, q) => {
+    consumerChannel.consume(POST_SERVICE_QUEUES.changeDislikedPost, async (msg) => {
+      const data = JSON.parse(msg.content);
+      let respData = null;
+      try {
+        await postService.changeDislikedPost({
+          userId: data.userId,
+          toDislikePostId: data.toDislikePostId,
+          isDisliked: data.isDisliked
+        });
+        respData = formatResponse({data: {}, err: null});
+      } catch (err) {
+        respData = formatResponse({data: null, err});
+      }
+
+      producerChannel.sendToQueue(msg.properties.replyTo,
+        Buffer.from(JSON.stringify(respData)), {
+          correlationId: msg.properties.correlationId
+        });
+      consumerChannel.ack(msg);
+    });
+  });
+
+  consumerChannel.assertQueue(POST_SERVICE_QUEUES.createComment, {exclusive: false}, (error2, q) => {
+    consumerChannel.consume(POST_SERVICE_QUEUES.createComment, async (msg) => {
+      const data = JSON.parse(msg.content);
+      let respData = null;
+      try {
+        const newComment = await postService.createComment({
+          postId: data.postId,
+          authorId: data.authorId,
+          text: data.text
+        });
+        respData = formatResponse({data: newComment, err: null});
+      } catch (err) {
+        respData = formatResponse({data: null, err});
+      }
+
+      producerChannel.sendToQueue(msg.properties.replyTo,
+        Buffer.from(JSON.stringify(respData)), {
+          correlationId: msg.properties.correlationId
+        });
+      consumerChannel.ack(msg);
+    });
+  });
+
+}
+
+
+// Connect, make queues and start
+  Promise.all([brokerConsumer.getChannel(), brokerProducer.getChannel(), brokerConsumer.initReplyConsumer()]).then(values => {
+    try {
+      declareQueues(values[0], values[1]);
+      console.log("Post Service - Ready");
+    } catch (err) {
+      console.log(err);
+    }
+  });
