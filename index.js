@@ -11,6 +11,11 @@ const POST_SERVICE_QUEUES = {
   findPostById:               "postService_findPostById",
   findPostsByUserId:          "postService_findPostsByUserId",
   create:                     "postService_create",
+
+  changeLikedPost:            "postService_changeLikedPost",
+  changeDislikedPost:         "postService_changeDislikedPost",
+
+  createComment:              "postService_createComment"
 };
 
 
@@ -77,11 +82,81 @@ const declareQueues = (consumerChannel, producerChannel) => {
     });
   });
 
+  consumerChannel.assertQueue(POST_SERVICE_QUEUES.changeLikedPost, {exclusive: false}, (error2, q) => {
+    consumerChannel.consume(POST_SERVICE_QUEUES.changeLikedPost, async (msg) => {
+      const data = JSON.parse(msg.content);
+      let respData = null;
+      try {
+        await postService.changeLikedPost({
+          userId: data.userId,
+          toLikePostId: data.toLikePostId,
+          isLiked: data.isLiked
+        });
+        respData = formatResponse({data: {}, err: null});
+      } catch (err) {
+        respData = formatResponse({data: null, err});
+      }
+
+      producerChannel.sendToQueue(msg.properties.replyTo,
+        Buffer.from(JSON.stringify(respData)), {
+          correlationId: msg.properties.correlationId
+        });
+      consumerChannel.ack(msg);
+    });
+  });
+
+
+  consumerChannel.assertQueue(POST_SERVICE_QUEUES.changeDislikedPost, {exclusive: false}, (error2, q) => {
+    consumerChannel.consume(POST_SERVICE_QUEUES.changeDislikedPost, async (msg) => {
+      const data = JSON.parse(msg.content);
+      let respData = null;
+      try {
+        await postService.changeDislikedPost({
+          userId: data.userId,
+          toDislikePostId: data.toDislikePostId,
+          isDisliked: data.isDisliked
+        });
+        respData = formatResponse({data: {}, err: null});
+      } catch (err) {
+        respData = formatResponse({data: null, err});
+      }
+
+      producerChannel.sendToQueue(msg.properties.replyTo,
+        Buffer.from(JSON.stringify(respData)), {
+          correlationId: msg.properties.correlationId
+        });
+      consumerChannel.ack(msg);
+    });
+  });
+
+  consumerChannel.assertQueue(POST_SERVICE_QUEUES.createComment, {exclusive: false}, (error2, q) => {
+    consumerChannel.consume(POST_SERVICE_QUEUES.createComment, async (msg) => {
+      const data = JSON.parse(msg.content);
+      let respData = null;
+      try {
+        const newComment = await postService.createComment({
+          postId: data.postId,
+          authorId: data.authorId,
+          text: data.text
+        });
+        respData = formatResponse({data: newComment, err: null});
+      } catch (err) {
+        respData = formatResponse({data: null, err});
+      }
+
+      producerChannel.sendToQueue(msg.properties.replyTo,
+        Buffer.from(JSON.stringify(respData)), {
+          correlationId: msg.properties.correlationId
+        });
+      consumerChannel.ack(msg);
+    });
+  });
+
 }
 
 
 // Connect, make queues and start
-  Promise.all([brokerConsumer.getChannel(), brokerProducer.getChannel()]).then(values => {
+  Promise.all([brokerConsumer.getChannel(), brokerProducer.getChannel(), brokerConsumer.initReplyConsumer()]).then(values => {
     try {
       declareQueues(values[0], values[1]);
       console.log("Post Service - Ready");

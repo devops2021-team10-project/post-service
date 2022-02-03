@@ -40,7 +40,12 @@ const updatePost = async ({ id, postData } = {}) => {
   return await findPostById({ id });
 };
 
+const createComment = async ({ postId, authorId, text }) => {
+  return await postDb.createComment({ postId, authorId, text });
+}
+
 const changeLikedPost = async ({ userId, toLikePostId, isLiked } = {}) => {
+  await changeDislikedPost({userId, toDislikePostId: toLikePostId, isDisliked: false});
   if (isLiked) {
     await postDb.addToPostSet({
       postId: toLikePostId,
@@ -58,6 +63,7 @@ const changeLikedPost = async ({ userId, toLikePostId, isLiked } = {}) => {
 
 const changeDislikedPost = async ({ userId, toDislikePostId, isDisliked } = {}) => {
   if (isDisliked) {
+    await changeLikedPost({userId, toLikePostId: toDislikePostId, isLiked: false });
     await postDb.addToPostSet({
       postId: toDislikePostId,
       toAddId: userId,
@@ -100,6 +106,7 @@ module.exports = Object.freeze({
 
   insertPost,
   updatePost,
+  createComment,
   changeLikedPost,
   changeDislikedPost,
   changeSavedPost,
