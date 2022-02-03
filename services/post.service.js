@@ -1,8 +1,17 @@
 const postDb = require('../data-access/post-db');
+const parse = require('date-fns/parse');
 
 const findPostById = async ({ id } = {}) => {
   return await postDb.findById({id});
 };
+
+const findAllPostsILike = async ({ userId }) => {
+  return await postDb.findAllPostsILike({ userId });
+}
+
+const findAllPostsIDislike = async ({ userId }) => {
+  return await postDb.findAllPostsIDislike({ userId });
+}
 
 const findAllPostsByUserId = async ({ authorUserId } = {}) => {
   return await postDb.findAllByUserId({ authorUserId });
@@ -18,6 +27,40 @@ const insertPost = async ({ authorUserId, postData, imageInfo } = {}) => {
     imageInfo:                    imageInfo,
     hashtags:                     postData.hashtags,
     description:                  postData.description,
+
+    isCampaign:                   false,
+    campaign:                     null,
+
+    likedBy:                      [],
+    dislikedBy:                   [],
+    savedBy:                      [],
+    comments:                     [],
+
+    createdAt:                    Date.now(),
+    deletedAt:                    null,
+  };
+
+  return await postDb.insert({data: postCreateData});
+};
+
+const insertPostWithCampaign = async ({ authorUserId, postData, imageInfo, campaignData } = {}) => {
+  const postCreateData = {
+    authorUserId:                 authorUserId,
+    imageInfo:                    imageInfo,
+    hashtags:                     postData.hashtags,
+    description:                  postData.description,
+
+    isCampaign:                   true,
+    campaign:                     {
+      start: parse(campaignData.start, 'dd.MM.yyyy.', new Date()),
+      end: parse(campaignData.end, 'dd.MM.yyyy.', new Date()),
+
+      genders: campaignData.genders,
+      ageRangeStart: campaignData.ageRangeStart,
+      ageRangeEnd: campaignData.ageRangeEnd,
+
+      link: campaignData.link
+    },
 
     likedBy:                      [],
     dislikedBy:                   [],
@@ -101,10 +144,13 @@ const deletePost = async ({ id }) => {
 
 module.exports = Object.freeze({
   findPostById,
+  findAllPostsILike,
+  findAllPostsIDislike,
   findAllPostsByUserId,
   findAllByGroupAndUserId,
 
   insertPost,
+  insertPostWithCampaign,
   updatePost,
   createComment,
   changeLikedPost,

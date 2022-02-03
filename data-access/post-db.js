@@ -12,6 +12,40 @@ const findById = async ({ id: _id }) => {
   return { id, ...info };
 };
 
+const findAllPostsILike = async ({ userId }) => {
+  const {db} = await makeDb();
+  const result  = await db.collection('posts').find(
+    { likedBy: { $elemMatch: { $eq: userId } } }
+  );
+  const found = await result.toArray();
+  if (found.length === 0) {
+    return [];
+  }
+  let normalArray = [];
+  for (let e of found) {
+    const { _id: id, ...info } = e;
+    normalArray.push({ id, ...info });
+  }
+  return normalArray;
+}
+
+const findAllPostsIDislike = async ({ userId }) => {
+  const {db} = await makeDb();
+  const result  = await db.collection('posts').find(
+    { dislikedBy: { $elemMatch: { $eq: userId } } }
+  );
+  const found = await result.toArray();
+  if (found.length === 0) {
+    return [];
+  }
+  let normalArray = [];
+  for (let e of found) {
+    const { _id: id, ...info } = e;
+    normalArray.push({ id, ...info });
+  }
+  return normalArray;
+}
+
 const findAllByUserId = async ({ authorUserId }) => {
   const { db } = await makeDb();
   const result = await db.collection('posts')
@@ -19,7 +53,7 @@ const findAllByUserId = async ({ authorUserId }) => {
     .sort({ createdAt: -1});
   const found = await result.toArray();
   if (found.length === 0) {
-    return null;
+    return [];
   }
   let normalArray = [];
   for (let e of found) {
@@ -37,7 +71,7 @@ const findAllByGroupAndUserId = async ({ group, userId }) => {
     .sort({ createdAt: 1});
   const found = await result.toArray();
   if (found.length === 0) {
-    return null;
+    return [];
   }
 
   let normalArray = [];
@@ -158,6 +192,9 @@ module.exports = Object.freeze({
   findById,
   findAllByUserId,
   findAllByGroupAndUserId,
+
+  findAllPostsILike,
+  findAllPostsIDislike,
 
   insert,
   update,

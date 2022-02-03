@@ -9,8 +9,11 @@ const postService = require('./services/post.service');
 
 const POST_SERVICE_QUEUES = {
   findPostById:               "postService_findPostById",
+  findAllPostsILike:          "postService_findAllPostsILike",
+  findAllPostsIDislike:       "postService_findAllPostsIDislike",
   findPostsByUserId:          "postService_findPostsByUserId",
   create:                     "postService_create",
+  createCampaign:             "postService_createCampaign",
 
   changeLikedPost:            "postService_changeLikedPost",
   changeDislikedPost:         "postService_changeDislikedPost",
@@ -28,6 +31,44 @@ const declareQueues = (consumerChannel, producerChannel) => {
       try {
         const post = await postService.findPostById({ id: data.postId });
         respData = formatResponse({data: post, err: null});
+      } catch (err) {
+        respData = formatResponse({data: null, err});
+      }
+
+      producerChannel.sendToQueue(msg.properties.replyTo,
+        Buffer.from(JSON.stringify(respData)), {
+          correlationId: msg.properties.correlationId
+        });
+      consumerChannel.ack(msg);
+    });
+  });
+
+  consumerChannel.assertQueue(POST_SERVICE_QUEUES.findAllPostsILike, {exclusive: false}, (error2, q) => {
+    consumerChannel.consume(POST_SERVICE_QUEUES.findAllPostsILike, async (msg) => {
+      const data = JSON.parse(msg.content);
+      let respData = null;
+      try {
+        const posts = await postService.findAllPostsILike({ userId: data.userId });
+        respData = formatResponse({data: posts, err: null});
+      } catch (err) {
+        respData = formatResponse({data: null, err});
+      }
+
+      producerChannel.sendToQueue(msg.properties.replyTo,
+        Buffer.from(JSON.stringify(respData)), {
+          correlationId: msg.properties.correlationId
+        });
+      consumerChannel.ack(msg);
+    });
+  });
+
+  consumerChannel.assertQueue(POST_SERVICE_QUEUES.findAllPostsIDislike, {exclusive: false}, (error2, q) => {
+    consumerChannel.consume(POST_SERVICE_QUEUES.findAllPostsIDislike, async (msg) => {
+      const data = JSON.parse(msg.content);
+      let respData = null;
+      try {
+        const posts = await postService.findAllPostsIDislike({ userId: data.userId });
+        respData = formatResponse({data: posts, err: null});
       } catch (err) {
         respData = formatResponse({data: null, err});
       }
@@ -68,6 +109,30 @@ const declareQueues = (consumerChannel, producerChannel) => {
           authorUserId: data.authorUserId,
           postData: data.postData,
           imageInfo: data.imageInfo
+        });
+        respData = formatResponse({data: post, err: null});
+      } catch (err) {
+        respData = formatResponse({data: null, err});
+      }
+
+      producerChannel.sendToQueue(msg.properties.replyTo,
+        Buffer.from(JSON.stringify(respData)), {
+          correlationId: msg.properties.correlationId
+        });
+      consumerChannel.ack(msg);
+    });
+  });
+
+  consumerChannel.assertQueue(POST_SERVICE_QUEUES.createCampaign, {exclusive: false}, (error2, q) => {
+    consumerChannel.consume(POST_SERVICE_QUEUES.createCampaign, async (msg) => {
+      const data = JSON.parse(msg.content);
+      let respData = null;
+      try {
+        const post = await postService.insertPostWithCampaign({
+          authorUserId: data.authorUserId,
+          postData: data.postData,
+          imageInfo: data.imageInfo,
+          campaignData: data.createCampaign,
         });
         respData = formatResponse({data: post, err: null});
       } catch (err) {
